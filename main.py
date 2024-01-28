@@ -1,5 +1,5 @@
-# створювати звіти:
-# ▷ вивести назву предмету, за яким читається найбільше лекцій
+# передбачити можливість збереження звітів з результатів роботи на екран або
+# у файл (встановлюється в налаштуваннях додатку)
 
 import json
 from sqlalchemy import create_engine, MetaData, Table, select, func
@@ -19,6 +19,10 @@ metadata = MetaData()
 # Отримання таблиць
 lectures_table = Table('lectures', metadata, autoload_with=engine)
 subjects_table = Table('subjects', metadata, autoload_with=engine)
+
+# Задайте інші налаштування (наприклад, вибір режиму виведення і, за необхідності, шлях до файлу)
+output_mode = config.get('output_mode', 'screen')  # 'screen' або 'file'
+output_file_path = config.get('output_file_path', 'result.txt')  # Шлях до файлу для збереження результатів
 
 # Зробіть SQL-запит
 query = (
@@ -40,9 +44,16 @@ query = (
 # Виконайте запит
 result = engine.execute(query)
 
-# Виведіть результат
-for row in result:
-    print(f"Найбільше лекцій за предметом: {row.subject_name}, Кількість лекцій: {row.lecture_count}")
+# Виведіть результат відповідно до вибраного режиму
+if output_mode == 'screen':
+    # Вивести на екран
+    for row in result:
+        print(f"Найбільше лекцій за предметом: {row.subject_name}, Кількість лекцій: {row.lecture_count}")
+else:
+    # Зберегти у файл
+    with open(output_file_path, 'w') as output_file:
+        for row in result:
+            output_file.write(f"Найбільше лекцій за предметом: {row.subject_name}, Кількість лекцій: {row.lecture_count}\n")
 
 # Закрити з'єднання
 result.close()
