@@ -1,8 +1,9 @@
-# передбачити можливість збереження звітів з результатів роботи на екран або
-# у файл (встановлюється в налаштуваннях додатку)
+# передбачити можливість входу з різними рівнями доступу.
+# Наприклад: доступ лише для читання, доступ
+# для читання та запис, доступ для читання певних таблиць.
 
 import json
-from sqlalchemy import create_engine, MetaData, Table, select, func
+from sqlalchemy import create_engine, MetaData, Table, select
 
 # Зчитування конфігураційних даних з файлу
 with open('config.json') as f:
@@ -20,40 +21,37 @@ metadata = MetaData()
 lectures_table = Table('lectures', metadata, autoload_with=engine)
 subjects_table = Table('subjects', metadata, autoload_with=engine)
 
-# Задайте інші налаштування (наприклад, вибір режиму виведення і, за необхідності, шлях до файлу)
-output_mode = config.get('output_mode', 'screen')  # 'screen' або 'file'
-output_file_path = config.get('output_file_path', 'result.txt')  # Шлях до файлу для збереження результатів
 
-# Зробіть SQL-запит
-query = (
-    select([
-        subjects_table.c.name.label('subject_name'),
-        func.count().label('lecture_count')
-    ])
-    .select_from(
-        lectures_table.join(
-            subjects_table,
-            lectures_table.c.subject_id == subjects_table.c.id
-        )
-    )
-    .group_by('subject_name')
-    .order_by(func.count().desc())
-    .limit(1)
-)
+user_name = 'user1'
+user_role = 'read_write'
 
-# Виконайте запит
-result = engine.execute(query)
 
-# Виведіть результат відповідно до вибраного режиму
-if output_mode == 'screen':
-    # Вивести на екран
-    for row in result:
-        print(f"Найбільше лекцій за предметом: {row.subject_name}, Кількість лекцій: {row.lecture_count}")
+if user_role == 'read_only':
+    lectures_query = select([lectures_table])
+    subjects_query = select([subjects_table])
+elif user_role == 'read_write':
+    lectures_query = select([lectures_table])
+    subjects_query = select([subjects_table])
+    # Додайте інші запити для запису, якщо потрібно
+elif user_role == 'read_subjects':
+    lectures_query = select([lectures_table])
+    subjects_query = select([subjects_table.c.name, subjects_table.c.id])
 else:
-    # Зберегти у файл
-    with open(output_file_path, 'w') as output_file:
-        for row in result:
-            output_file.write(f"Найбільше лекцій за предметом: {row.subject_name}, Кількість лекцій: {row.lecture_count}\n")
+    raise ValueError("Невідомий рівень доступу")
+
+# Виконайте запити
+lectures_result = engine.execute(lectures_query)
+subjects_result = engine.execute(subjects_query)
+
+
+print("Результат запиту до таблиці lectures:")
+for row in lectures_result:
+    print(row)
+
+print("\nРезультат запиту до таблиці subjects:")
+for row in subjects_result:
+    print(row)
 
 # Закрити з'єднання
-result.close()
+lectures_result.close()
+subjects_result.close()
