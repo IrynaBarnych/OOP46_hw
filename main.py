@@ -1,8 +1,9 @@
 # створювати звіти:
-# ▷ відобразити кафедру з мінімальною кількістю груп
+# ▷ вивести назви предметів, які викладає конкретний
+# викладач
 
 import json
-from sqlalchemy import create_engine, MetaData, Table, select, func
+from sqlalchemy import create_engine, MetaData, Table, select
 
 # Зчитування конфігураційних даних з файлу
 with open('config.json') as f:
@@ -16,29 +17,33 @@ db_url = f'postgresql+psycopg2://{db_user}:{db_password}@localhost:5432/Academy'
 engine = create_engine(db_url)
 metadata = MetaData()
 
-# Отримати таблиці
-departments_table = Table('departments', metadata, autoload_with=engine)
-groups_table = Table('groups', metadata, autoload_with=engine)
+# Отримання таблиць
+subjects_table = Table('subjects', metadata, autoload_with=engine)
+teachers_table = Table('teachers', metadata, autoload_with=engine)
+teaching_assignments_table = Table('teaching_assignments', metadata, autoload_with=engine)
 
-query = select([
-    departments_table.c.name,
-    func.count().label('group_count')
-]).select_from(
-    departments_table.join(
-        groups_table, departments_table.c.id == groups_table.c.department_id
+# Задайте ім'я конкретного викладача (замініть 'ПІБ_викладача' на реальне ім'я викладача)
+teacher_name = 'Олег'
+
+# Зробіть SQL-запит
+query = select([subjects_table.c.name]).select_from(
+    subjects_table.join(
+        teaching_assignments_table,
+        subjects_table.c.id == teaching_assignments_table.c.subject_id
+    ).join(
+        teachers_table,
+        teachers_table.c.id == teaching_assignments_table.c.teacher_id
     )
-).group_by(
-    departments_table.c.id
-).order_by(
-    func.count().asc()
-).limit(1)
+).where(
+    teachers_table.c.name == teacher_name
+)
 
-# Виконати запит
+# Виконайте запит
 result = engine.execute(query)
 
-# Вивести результат
-for row in result:
-    print(f"Кафедра: {row.name}, Кількість груп: {row.group_count}")
+# Виведіть результат
+subject_names = [row.name for row in result]
+print(f"Предмети, які викладає викладач {teacher_name}: {', '.join(subject_names)}")
 
 # Закрити з'єднання
 result.close()
