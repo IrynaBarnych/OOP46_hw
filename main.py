@@ -1,40 +1,41 @@
 # створювати звіти:
-# ▷ вивести імена та прізвища викладачів, які читають
-# лекції в конкретній групі
+# ▷ вивести назви кафедр і груп, які до них відносяться
 
 import json
 from sqlalchemy import create_engine, MetaData, Table, select
 
-# Підключення до бази даних
-engine = create_engine("postgresql://username:password@localhost:5432/Academy")
+# Зчитування конфігураційних даних з файлу
+with open('config.json') as f:
+    config = json.load(f)
 
-conn = engine.connect()
+# Отримання логіну та паролю з об'єкта конфігурації
+db_user = config['user']
+db_password = config['password']
 
-# Визначення таблиць
-metadata = MetaData(bind=engine)
-lecturers_table = Table("lecturers", metadata, autoload=True)
-groups_table = Table("groups", metadata, autoload=True)
-lectures_groups_table = Table("lectures_groups", metadata, autoload=True)
+db_url = f'postgresql+psycopg2://{db_user}:{db_password}@localhost:5432/Academy'
+engine = create_engine(db_url)
+metadata = MetaData()
 
+# Отримати таблиці
+departments_table = Table('departments', metadata, autoload_with=engine)
+groups_table = Table('groups', metadata, autoload_with=engine)
 
-def report_lecturers_for_group(group_name):
-    query = (
-        select([lecturers_table.c.name, lecturers_table.c.surname])
-        .select_from(groups_table.join(lectures_groups_table).join(lecturers_table))
-        .where(groups_table.c.name == group_name)
+query = select([
+    departments_table.c.name.label('department_name'),
+    groups_table.c.name.label('group_name')
+]).select_from(
+    departments_table.join(
+        groups_table, departments_table.c.id == groups_table.c.department_id
     )
-    result = conn.execute(query)
+)
 
-    if result.rowcount == 0:
-        print(f"No lecturers found for group {group_name}.")
-    else:
-        print(f"Lecturers for group {group_name}:")
-        for row in result:
-            print(row)
+# Виконати запит
+result = engine.execute(query)
 
+# Вивести результат
+for row in result:
+    print(f"Кафедра: {row.department_name}, Група: {row.group_name}")
 
-# Приклад виклику звіту для групи "Група1"
-report_lecturers_for_group("Група1")
+# Закрити з'єднання
+result.close()
 
-# Закриття підключення
-conn.close()
