@@ -3,28 +3,71 @@
 # курсу «Теорія Баз Даних», створіть додаток для взаємодії
 # з базою даних, який дозволяє:
 # ■ вставляти рядки в таблиці бази даних;
-# ■ оновлювати рядків у таблицях бази даних;
-# ■ видаляти рядки з таблиць бази даних;
-# ■ створювати звіти:
-# ▷ вивести інформацію про всі навчальні групи,
-# ▷ вивести інформацію про всіх викладачів,
-# ▷ вивести назви усіх кафедр,
-# ▷ вивести імена та прізвища викладачів, які читають
-# лекції в конкретній групі,
-# ▷ вивести назви кафедр і груп, які до них відносяться,
-# ▷ відобразити кафедру з максимальною кількістю груп,
-# ▷ відобразити кафедру з мінімальною кількістю груп,
-# ▷ вивести назви предметів, які викладає конкретний
-# викладач,
-# ▷ вивести назви кафедр, на яких викладається конкретна дисципліна,
-# вивести назви груп, що належать до конкретного
-# факультету,
-# ▷ вивести назви предметів та повні імена викладачів,
-# які читають найбільшу кількість лекцій з них,
-# ▷ вивести назву предмету, за яким читається найменше лекцій,
-# ▷ вивести назву предмету, за яким читається найбільше лекцій;
-# ■ передбачити можливість збереження звітів з результатів роботи на екран або у файл (встановлюється в
-# налаштуваннях додатку);
-# ■ передбачити можливість входу з різними рівнями доступу. Наприклад: доступ лише для читання, доступ
-# для читання та запис, доступ для читання певних
-# таблиць.
+
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import sessionmaker, declarative_base, relationship
+import json
+
+# Зчитування конфігураційних даних з файлу
+with open('config.json') as f:
+    config = json.load(f)
+
+# Отримання логіну та паролю з об'єкта конфігурації
+db_user = config['user']
+db_password = config['password']
+
+db_url = f'postgresql+psycopg2://{db_user}:{db_password}@localhost:5432/Academy'
+engine = create_engine(db_url)
+
+Base = declarative_base()
+
+# Клас для таблиці Факультети (Faculties)
+class Faculty(Base):
+    __tablename__ = 'faculties'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dean = Column(String(255), nullable=False)
+    name = Column(String(100), unique=True, nullable=False)
+
+    # Зв'язок з таблицею Departments
+    departments = relationship('Department', back_populates='faculty')
+
+# Клас для таблиці Кафедри (Departments)
+class Department(Base):
+    __tablename__ = 'departments'
+
+    id = Column(Integer, primary_key=True)
+    financing = Column(Integer, nullable=False)
+    name = Column(String(100), unique=True, nullable=False)
+    faculty_id = Column(Integer, ForeignKey('faculties.id'))
+
+    # Зв'язок з таблицею Faculties
+    faculty = relationship('Faculty', back_populates='departments')
+
+# Замініть 'postgresql+psycopg2://user:password@localhost:5432/dbname' на ваш реальний DSN
+Base.metadata.create_all(engine)
+
+# Створення сесії
+Session = sessionmaker(bind=engine)
+session = Session()
+
+# Додавання записів
+
+faculty3 = Faculty(dean='Сидоров С.С.', name='Факультет філосовських наук')
+faculty4 = Faculty(dean='Михайлов М.М.', name='Факультет оборонних наук')
+
+faculties = [faculty3, faculty4]
+
+# Створення сесії
+Session = sessionmaker(bind=engine)
+session = Session()
+
+for faculty in faculties:
+    try:
+        session.merge(faculty)
+        session.commit()
+    except Exception as e:
+        print(f"Помилка: {e}")
+        session.rollback()
+
+session.close()
