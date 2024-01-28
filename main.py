@@ -1,42 +1,40 @@
 # створювати звіти:
-# ▷ вивести назви усіх кафедр
+# ▷ вивести імена та прізвища викладачів, які читають
+# лекції в конкретній групі
 
 import json
 from sqlalchemy import create_engine, MetaData, Table, select
 
-# Зчитування конфігураційних даних з файлу
-with open('config.json') as f:
-    config = json.load(f)
-
-# Отримання логіну та паролю з об'єкта конфігурації
-db_user = config['user']
-db_password = config['password']
-
-db_url = f'postgresql+psycopg2://{db_user}:{db_password}@localhost:5432/Academy'
-engine = create_engine(db_url)
-
 # Підключення до бази даних
+engine = create_engine("postgresql://username:password@localhost:5432/Academy")
+
 conn = engine.connect()
 
-# Отримання таблиці departments
-departments_table = Table('departments', MetaData(), autoload_with=engine)
+# Визначення таблиць
+metadata = MetaData(bind=engine)
+lecturers_table = Table("lecturers", metadata, autoload=True)
+groups_table = Table("groups", metadata, autoload=True)
+lectures_groups_table = Table("lectures_groups", metadata, autoload=True)
 
 
-def generate_report(table):
-    # Створення запиту для виведення назв усіх кафедр
-    query = select(table.columns['name'])
-
-    # Виконання запиту
+def report_lecturers_for_group(group_name):
+    query = (
+        select([lecturers_table.c.name, lecturers_table.c.surname])
+        .select_from(groups_table.join(lectures_groups_table).join(lecturers_table))
+        .where(groups_table.c.name == group_name)
+    )
     result = conn.execute(query)
 
-    # Виведення результатів
-    print("Назви усіх кафедр:")
-    for row in result:
-        print(row[0])
+    if result.rowcount == 0:
+        print(f"No lecturers found for group {group_name}.")
+    else:
+        print(f"Lecturers for group {group_name}:")
+        for row in result:
+            print(row)
 
 
-# Виклик функції для генерації звіту про кафедри
-generate_report(departments_table)
+# Приклад виклику звіту для групи "Група1"
+report_lecturers_for_group("Група1")
 
-# Закриття з'єднання
+# Закриття підключення
 conn.close()
