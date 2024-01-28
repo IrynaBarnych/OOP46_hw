@@ -1,5 +1,5 @@
 # створювати звіти:
-# ▷ вивести назву предмету, за яким читається найменше лекцій
+# ▷ вивести назву предмету, за яким читається найбільше лекцій
 
 import json
 from sqlalchemy import create_engine, MetaData, Table, select, func
@@ -33,7 +33,7 @@ query = (
         )
     )
     .group_by('subject_name')
-    .order_by(func.count())
+    .order_by(func.count().desc())
     .limit(1)
 )
 
@@ -42,7 +42,7 @@ result = engine.execute(query)
 
 # Виведіть результат
 for row in result:
-    print(f"Найменше лекцій за предметом: {row.subject_name}, Кількість лекцій: {row.lecture_count}")
+    print(f"Найбільше лекцій за предметом: {row.subject_name}, Кількість лекцій: {row.lecture_count}")
 
 # Закрити з'єднання
 result.close()
