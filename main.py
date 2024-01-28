@@ -1,6 +1,5 @@
 # створювати звіти:
-# ▷ вивести назви предметів, які викладає конкретний
-# викладач
+# ▷ вивести назви кафедр, на яких викладається конкретна дисципліна
 
 import json
 from sqlalchemy import create_engine, MetaData, Table, select
@@ -18,32 +17,32 @@ engine = create_engine(db_url)
 metadata = MetaData()
 
 # Отримання таблиць
+departments_table = Table('departments', metadata, autoload_with=engine)
 subjects_table = Table('subjects', metadata, autoload_with=engine)
-teachers_table = Table('teachers', metadata, autoload_with=engine)
 teaching_assignments_table = Table('teaching_assignments', metadata, autoload_with=engine)
 
-# Задайте ім'я конкретного викладача (замініть 'ПІБ_викладача' на реальне ім'я викладача)
-teacher_name = 'Олег'
+# Задайте ім'я конкретної дисципліни (замініть 'Назва_дисципліни' на реальну назву)
+subject_name = 'Математика'
 
 # Зробіть SQL-запит
-query = select([subjects_table.c.name]).select_from(
-    subjects_table.join(
+query = select([departments_table.c.name]).select_from(
+    departments_table.join(
         teaching_assignments_table,
-        subjects_table.c.id == teaching_assignments_table.c.subject_id
+        departments_table.c.id == teaching_assignments_table.c.department_id
     ).join(
-        teachers_table,
-        teachers_table.c.id == teaching_assignments_table.c.teacher_id
+        subjects_table,
+        subjects_table.c.id == teaching_assignments_table.c.subject_id
     )
 ).where(
-    teachers_table.c.name == teacher_name
+    subjects_table.c.name == subject_name
 )
 
 # Виконайте запит
 result = engine.execute(query)
 
 # Виведіть результат
-subject_names = [row.name for row in result]
-print(f"Предмети, які викладає викладач {teacher_name}: {', '.join(subject_names)}")
+department_names = [row.name for row in result]
+print(f"Кафедри, на яких викладається дисципліна {subject_name}: {', '.join(department_names)}")
 
 # Закрити з'єднання
 result.close()
