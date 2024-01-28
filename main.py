@@ -1,5 +1,5 @@
 # створювати звіти:
-# ▷ відобразити кафедру з максимальною кількістю груп
+# ▷ відобразити кафедру з мінімальною кількістю груп
 
 import json
 from sqlalchemy import create_engine, MetaData, Table, select, func
@@ -20,7 +20,6 @@ metadata = MetaData()
 departments_table = Table('departments', metadata, autoload_with=engine)
 groups_table = Table('groups', metadata, autoload_with=engine)
 
-# Зробити SQL-запит
 query = select([
     departments_table.c.name,
     func.count().label('group_count')
@@ -31,7 +30,7 @@ query = select([
 ).group_by(
     departments_table.c.id
 ).order_by(
-    func.count().desc()
+    func.count().asc()
 ).limit(1)
 
 # Виконати запит
