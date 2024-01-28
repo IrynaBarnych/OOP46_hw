@@ -1,11 +1,8 @@
-# Завдання
-# Для бази даних Академія, яку ви розробили в рамках
-# курсу «Теорія Баз Даних», створіть додаток для взаємодії
-# з базою даних, який дозволяє:
-# ■ видаляти рядки з таблиць бази даних;
+# створювати звіти:
+# ▷ вивести інформацію про всі навчальні групи,
 
+from sqlalchemy import create_engine, MetaData, Table, select
 import json
-from sqlalchemy import create_engine, MetaData, Table, delete
 
 # Зчитування конфігураційних даних з файлу
 with open('config.json') as f:
@@ -21,40 +18,27 @@ engine = create_engine(db_url)
 # Підключення до бази даних
 conn = engine.connect()
 
-# Отримання таблиці faculties
-faculties_table = Table('faculties', MetaData(), autoload_with=engine)
+# Отримання таблиці groups
+groups_table = Table('groups', MetaData(), autoload_with=engine)
 
-def print_columns(columns):
-    print("Доступні колонки для видалення: ")
-    for idx, column in enumerate(columns, start=1):
-        print(f"{idx}.{column}")
 
-def delete_rows(table):
-    columns = table.columns.keys()
-    print_columns(columns)
+def generate_report(table):
+    # Створення запиту для виведення інформації про всі навчальні групи
+    query = select(table)
 
-    selected_column_idx = int(input("Введіть номер колонки для умови видалення: "))
+    # Виконання запиту
+    result = conn.execute(query)
 
-    if 1 <= selected_column_idx <= len(columns):
-        condition_column = columns[selected_column_idx - 1]
-    else:
-        print("Невірний номер колонки! Видалення відмінено!")
-        return
+    # Виведення результатів
+    print("Інформація про всі навчальні групи:")
+    for row in result:
+        print(row)
 
-    condition_value = input(f"Введіть значення для умови, {condition_column}: ")
 
-    confirm_update = input("Видалити усі рядки з цієї таблиці? Так/Ні? ")
-    if confirm_update.lower() == 'так':
-        query = delete(table).where(getattr(table.c, condition_column) == condition_value)
-        conn.execute(query)
-        conn.commit()
-        print("Рядки успішно видалені.")
-    else:
-        print("Видалення відмінено.")
-
-# Виклик функції для видалення рядків у таблиці faculties
-delete_rows(faculties_table)
+# Виклик функції для генерації звіту про навчальні групи
+generate_report(groups_table)
 
 # Закриття з'єднання
 conn.close()
+
 
