@@ -1,8 +1,8 @@
 # створювати звіти:
-# ▷ вивести інформацію про всі навчальні групи,
+# ▷ вивести інформацію про всіх викладачів
 
-from sqlalchemy import create_engine, MetaData, Table, select
 import json
+from sqlalchemy import create_engine, MetaData, Table, select
 
 # Зчитування конфігураційних даних з файлу
 with open('config.json') as f:
@@ -18,27 +18,25 @@ engine = create_engine(db_url)
 # Підключення до бази даних
 conn = engine.connect()
 
-# Отримання таблиці groups
-groups_table = Table('groups', MetaData(), autoload_with=engine)
+# Отримання таблиці teachers
+teachers_table = Table('teachers', MetaData(), autoload_with=engine)
 
 
 def generate_report(table):
-    # Створення запиту для виведення інформації про всі навчальні групи
+    # Створення запиту для виведення інформації про всіх викладачів
     query = select(table)
 
     # Виконання запиту
     result = conn.execute(query)
 
     # Виведення результатів
-    print("Інформація про всі навчальні групи:")
+    print("Інформація про всіх викладачів:")
     for row in result:
         print(row)
 
 
-# Виклик функції для генерації звіту про навчальні групи
-generate_report(groups_table)
+# Виклик функції для генерації звіту про викладачів
+generate_report(teachers_table)
 
 # Закриття з'єднання
 conn.close()
-
-
