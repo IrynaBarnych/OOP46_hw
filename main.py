@@ -1,9 +1,9 @@
 # створювати звіти:
-# ▷ вивести назви груп, що належать до конкретного
-# факультету
+# ▷ вивести назви предметів та повні імена викладачів,
+# які читають найбільшу кількість лекцій з них
 
 import json
-from sqlalchemy import create_engine, MetaData, Table, select
+from sqlalchemy import create_engine, MetaData, Table, select, func
 
 # Зчитування конфігураційних даних з файлу
 with open('config.json') as f:
@@ -18,31 +18,37 @@ engine = create_engine(db_url)
 metadata = MetaData()
 
 # Отримання таблиць
-faculties_table = Table('faculties', metadata, autoload_with=engine)
-groups_table = Table('groups', metadata, autoload_with=engine)
-departments_table = Table('departments', metadata, autoload_with=engine)
+lectures_table = Table('lectures', metadata, autoload_with=engine)
+subjects_table = Table('subjects', metadata, autoload_with=engine)
+teachers_table = Table('teachers', metadata, autoload_with=engine)
 
-# Задайте ім'я конкретного факультету (замініть 'Назва_факультету' на реальну назву)
-faculty_name = 'Факультет природничих наук'
-
-query = select([groups_table.c.name]).select_from(
-    groups_table.join(
-        departments_table,
-        groups_table.c.department_id == departments_table.c.id
-    ).join(
-        faculties_table,
-        faculties_table.c.id == departments_table.c.faculty_id
+query = (
+    select([
+        subjects_table.c.name.label('subject_name'),
+        func.concat(teachers_table.c.name, ' ', teachers_table.c.surname).label('teacher_name'),
+        func.count().label('lecture_count')
+    ])
+    .select_from(
+        lectures_table.join(
+            subjects_table,
+            lectures_table.c.subject_id == subjects_table.c.id
+        ).join(
+            teachers_table,
+            lectures_table.c.teacher_id == teachers_table.c.id
+        )
     )
-).where(
-    faculties_table.c.name == faculty_name
+    .group_by('subject_name', 'teacher_name')
+    .order_by(func.count().desc())
+    .limit(1)
 )
 
 # Виконайте запит
 result = engine.execute(query)
 
 # Виведіть результат
-group_names = [row.name for row in result]
-print(f"Групи, що належать до факультету {faculty_name}: {', '.join(group_names)}")
+for row in result:
+    print(f"Предмет: {row.subject_name}, Викладач: {row.teacher_name}, Кількість лекцій: {row.lecture_count}")
 
 # Закрити з'єднання
 result.close()
+
