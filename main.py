@@ -1,5 +1,5 @@
 # створювати звіти:
-# ▷ вивести інформацію про всіх викладачів
+# ▷ вивести назви усіх кафедр
 
 import json
 from sqlalchemy import create_engine, MetaData, Table, select
@@ -18,25 +18,25 @@ engine = create_engine(db_url)
 # Підключення до бази даних
 conn = engine.connect()
 
-# Отримання таблиці teachers
-teachers_table = Table('teachers', MetaData(), autoload_with=engine)
+# Отримання таблиці departments
+departments_table = Table('departments', MetaData(), autoload_with=engine)
 
 
 def generate_report(table):
-    # Створення запиту для виведення інформації про всіх викладачів
-    query = select(table)
+    # Створення запиту для виведення назв усіх кафедр
+    query = select(table.columns['name'])
 
     # Виконання запиту
     result = conn.execute(query)
 
     # Виведення результатів
-    print("Інформація про всіх викладачів:")
+    print("Назви усіх кафедр:")
     for row in result:
-        print(row)
+        print(row[0])
 
 
-# Виклик функції для генерації звіту про викладачів
-generate_report(teachers_table)
+# Виклик функції для генерації звіту про кафедри
+generate_report(departments_table)
 
 # Закриття з'єднання
 conn.close()
