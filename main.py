@@ -2,11 +2,10 @@
 # Для бази даних Академія, яку ви розробили в рамках
 # курсу «Теорія Баз Даних», створіть додаток для взаємодії
 # з базою даних, який дозволяє:
-# ■ вставляти рядки в таблиці бази даних;
+# ■ оновлювати рядків у таблицях бази даних;
 
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import json
+from sqlalchemy import create_engine, MetaData, Table, update
 
 # Зчитування конфігураційних даних з файлу
 with open('config.json') as f:
@@ -19,55 +18,44 @@ db_password = config['password']
 db_url = f'postgresql+psycopg2://{db_user}:{db_password}@localhost:5432/Academy'
 engine = create_engine(db_url)
 
-Base = declarative_base()
+# Підключення до бази даних
+conn = engine.connect()
 
-# Клас для таблиці Факультети (Faculties)
-class Faculty(Base):
-    __tablename__ = 'faculties'
+# Отримання таблиці faculties
+faculties_table = Table('faculties', MetaData(), autoload_with=engine)
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    dean = Column(String(255), nullable=False)
-    name = Column(String(100), unique=True, nullable=False)
+def print_columns(columns):
+    print("Доступні колонки для оновлення: ")
+    for idx, column in enumerate(columns, start=1):
+        print(f"{idx}.{column}")
 
-    # Зв'язок з таблицею Departments
-    departments = relationship('Department', back_populates='faculty')
+def update_rows(table):
+    columns = table.columns.keys()
+    print_columns(columns)
 
-# Клас для таблиці Кафедри (Departments)
-class Department(Base):
-    __tablename__ = 'departments'
+    selected_column_idx = int(input("Введіть номер колонки для оновлення: "))
 
-    id = Column(Integer, primary_key=True)
-    financing = Column(Integer, nullable=False)
-    name = Column(String(100), unique=True, nullable=False)
-    faculty_id = Column(Integer, ForeignKey('faculties.id'))
+    if 1 <= selected_column_idx <= len(columns):
+        condition_column = columns[selected_column_idx - 1]
+    else:
+        print("Невірний номер колонки!")
 
-    # Зв'язок з таблицею Faculties
-    faculty = relationship('Faculty', back_populates='departments')
+    condition_value = input(f"Введіть значення для умови, {condition_column}: ")
+    new_values = {}
 
-# Замініть 'postgresql+psycopg2://user:password@localhost:5432/dbname' на ваш реальний DSN
-Base.metadata.create_all(engine)
+    # Введення нових значень для кожної колонки
+    for column in columns:
+        value = input(f"Введіть нове значення для колонки {column}: ")
+        new_values[column] = value
 
-# Створення сесії
-Session = sessionmaker(bind=engine)
-session = Session()
+    confirm_update = input("Оновити усі рядки? Так/Ні? ")
+    if confirm_update.lower() == 'так':
+        query = update(table).where(getattr(table.c, condition_column) == condition_value).values(new_values)
+        conn.execute(query)
+        conn.commit()
 
-# Додавання записів
+# Виклик функції для оновлення рядків у таблиці faculties
+update_rows(faculties_table)
 
-faculty3 = Faculty(dean='Сидоров С.С.', name='Факультет філосовських наук')
-faculty4 = Faculty(dean='Михайлов М.М.', name='Факультет оборонних наук')
-
-faculties = [faculty3, faculty4]
-
-# Створення сесії
-Session = sessionmaker(bind=engine)
-session = Session()
-
-for faculty in faculties:
-    try:
-        session.merge(faculty)
-        session.commit()
-    except Exception as e:
-        print(f"Помилка: {e}")
-        session.rollback()
-
-session.close()
+# Закриття з'єднання
+conn.close()
